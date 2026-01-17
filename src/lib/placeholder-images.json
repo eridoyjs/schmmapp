@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "school-landing-hero",
+      "description": "A modern school building with a diverse group of students in the foreground",
+      "imageUrl": "https://images.unsplash.com/photo-1603958956194-cf9718dba4b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjBzY2hvb2x8ZW58MHx8fHwxNzY4NTI0NDQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern school"
+    }
+  ]
+}

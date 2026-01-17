@@ -1,0 +1,136 @@
+/**
+ * # Firestore Security Rules for RHOM School Management
+ *
+ * ## Core Philosophy
+ * This ruleset enforces a multi-tenant, role-based, and subscription-aware security model.
+ * It is built on three core principles:
+ * 1.  **Strict Data Segregation:** All data is partitioned under a top-level `/schools/{schoolId}` collection. This is the primary mechanism for multi-school isolation, ensuring no user from one school can ever access data from another.
+ * 2.  **Performant Authorization via Custom Claims:** All authorization decisions are made using custom claims (`role`, `schoolId`, `subscriptionActive`) embedded in the user's authentication token. This is a highly performant and secure strategy that avoids slow and costly `get()` or `exists()` calls within the rules themselves. Rules remain atomic and fast.
+ * 3.  **Role-Based Access Control (RBAC):** Permissions are granted based on the user's role (`master`, `admin`, `teacher`, `student`). The 'master' role has super-administrator privileges across the platform, while other roles have permissions scoped to their school.
+ *
+ * ## Key Security Decisions
+ * - **Subscription Enforcement:** A custom claim, `subscriptionActive`, is checked on nearly every operation. If a school's subscription expires, this claim becomes `false` upon the user's next login, effectively blocking all access to school data until the subscription is renewed. Master users bypass this check.
+ * - **Cross-School Prevention:** The `isSchoolMember()` function is the gatekeeper for all school-specific data. It ensures that the `schoolId` in the user's token matches the `schoolId` in the document path they are trying to access.
+ * - **Segregation of Duties:** The rules enforce a clear workflow, particularly for results. Teachers can create and edit marks but cannot publish them (`isNotChanging('published')`). Only an admin (or master) can toggle the `published` flag, preventing premature data release.
+ * - **Default-Deny & Explicit Grants:** Access is denied by default. Permissions are only granted through explicit `allow` statements. Operations like creating new schools or performing destructive actions are restricted to the highest privilege levels.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // --- Role & Subscription Checks (based on Custom Claims) ---
+
+    function isMaster() {
+      return isSignedIn() && request.auth.token.role == 'master';
+    }
+
+    function isSubscriptionActive() {
+      // Master users bypass subscription checks. For others, the status is from the token.
+      return isMaster() || (isSignedIn() && request.auth.token.subscriptionActive == true);
+    }
+
+    function isSchoolMember(schoolId) {
+      // A user is a member if they are a master user or their token's schoolId matches the path.
+      return isSignedIn() && (isMaster() || request.auth.token.schoolId == schoolId);
+    }
+
+    function isSchoolAdmin(schoolId) {
+      return isSchoolMember(schoolId) && request.auth.token.role == 'admin';
+    }
+
+    function isSchoolTeacher(schoolId) {
+      return isSchoolMember(schoolId) && request.auth.token.role == 'teacher';
+    }
+
+    function isSchoolStudent(schoolId) {
+      return isSchoolMember(schoolId) && request.auth.token.role == 'student';
+    }
+
+    function canManage(schoolId) {
+      // A helper for master users or admins of an active school.
+      return isMaster() || (isSchoolAdmin(schoolId) && isSubscriptionActive());
+    }
+
+    // --- Data Ownership & Integrity Checks ---
+
+    function isOwnStudentData(studentId) {
+      return request.auth.uid == studentId;
+    }
+
+    function isPublished() {
+      return resource.data.published == true;
+    }
+
+    function incomingDataMatchesSchoolId(schoolId) {
+      // Ensures new documents are created in the correct school scope.
+      return request.resource.data.schoolId == schoolId;
+    }
+
+    function isNotChanging(field) {
+      // Enforces immutability of a field during an update.
+      return request.resource.data[field] == resource.data[field];
+    }
+
+
+    // --- Firestore Rules ---
+
+    match /schools/{schoolId} {
+      allow get: if isSchoolMember(schoolId) && isSubscriptionActive();
+      allow list: if isMaster();
+      allow create: if isMaster();
+      allow update: if canManage(schoolId);
+      // Deleting schools from the client is a destructive action, restricted for safety.
+      allow delete: if false;
+
+      // --- Students Collection ---
+      match /students/{studentId} {
+        allow get: if (isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId) || (isSchoolStudent(schoolId) && isOwnStudentData(studentId))) && isSubscriptionActive();
+        allow list: if (isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId)) && isSubscriptionActive();
+        allow create: if canManage(schoolId) && incomingDataMatchesSchoolId(schoolId);
+        allow update: if canManage(schoolId) && isNotChanging('schoolId');
+        allow delete: if canManage(schoolId);
+      }
+
+      // --- Teachers Collection ---
+      match /teachers/{teacherId} {
+        allow get, list: if (isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId)) && isSubscriptionActive();
+        allow create: if canManage(schoolId) && incomingDataMatchesSchoolId(schoolId);
+        allow update: if canManage(schoolId) && isNotChanging('schoolId');
+        allow delete: if canManage(schoolId);
+      }
+
+      // --- Results Collection ---
+      match /results/{resultId} {
+        allow get: if ((isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId)) || (isSchoolStudent(schoolId) && isOwnStudentData(resource.data.studentId) && isPublished())) && isSubscriptionActive();
+        allow list: if (isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId) || isSchoolStudent(schoolId)) && isSubscriptionActive();
+        allow create: if (isSchoolAdmin(schoolId) || isSchoolTeacher(schoolId)) && isSubscriptionActive() && incomingDataMatchesSchoolId(schoolId) && request.resource.data.published == false;
+        allow update: if canManage(schoolId) || (isSchoolTeacher(schoolId) && isSubscriptionActive() && isNotChanging('published'));
+        allow delete: if canManage(schoolId);
+      }
+
+      // --- Payments Collection ---
+      match /payments/{paymentId} {
+        allow get: if (isSchoolAdmin(schoolId) || (isSchoolStudent(schoolId) && isOwnStudentData(resource.data.studentId))) && isSubscriptionActive();
+        allow list: if (isSchoolAdmin(schoolId) || isSchoolStudent(schoolId)) && isSubscriptionActive();
+        allow create: if isSchoolStudent(schoolId) && isSubscriptionActive() && request.resource.data.studentId == request.auth.uid && incomingDataMatchesSchoolId(schoolId);
+        allow update: if canManage(schoolId);
+        allow delete: if canManage(schoolId);
+      }
+
+      // --- Notices Collection ---
+      match /notices/{noticeId} {
+        allow get: if isSchoolMember(schoolId) && isSubscriptionActive() && isPublished();
+        allow list: if isSchoolMember(schoolId) && isSubscriptionActive();
+        allow create: if canManage(schoolId) && incomingDataMatchesSchoolId(schoolId);
+        allow update: if canManage(schoolId);
+        allow delete: if canManage(schoolId);
+      }
+    }
+  }
+}

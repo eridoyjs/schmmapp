@@ -1,0 +1,462 @@
+{
+  "entities": {
+    "School": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "School",
+      "type": "object",
+      "description": "Represents a school in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the school."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the school."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the school."
+        },
+        "code": {
+          "type": "string",
+          "description": "The unique code for the school."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the school (active / disabled)."
+        },
+        "subscription": {
+          "type": "object",
+          "description": "Embedded subscription details for the school.",
+          "properties": {
+            "maxStudent": {
+              "type": "number",
+              "description": "The maximum number of students allowed in the subscription."
+            },
+            "maxTeacher": {
+              "type": "number",
+              "description": "The maximum number of teachers allowed in the subscription."
+            },
+            "expiry": {
+              "type": "string",
+              "description": "The expiry date of the subscription.",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "maxStudent",
+            "maxTeacher",
+            "expiry"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "code",
+        "status",
+        "subscription"
+      ]
+    },
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "type": "object",
+      "description": "Represents a student in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the student."
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N Student)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the student."
+        },
+        "shift": {
+          "type": "string",
+          "description": "The shift of the student (e.g., Morning, Day)."
+        },
+        "session": {
+          "type": "string",
+          "description": "The session of the student (e.g., 2026-2050)."
+        },
+        "class": {
+          "type": "string",
+          "description": "The class of the student (e.g., Play, 12)."
+        },
+        "roll": {
+          "type": "number",
+          "description": "The roll number of the student."
+        },
+        "loginCode": {
+          "type": "string",
+          "description": "The login code for the student."
+        }
+      },
+      "required": [
+        "id",
+        "schoolId",
+        "name",
+        "shift",
+        "session",
+        "class",
+        "roll",
+        "loginCode"
+      ]
+    },
+    "Teacher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Teacher",
+      "type": "object",
+      "description": "Represents a teacher in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the teacher."
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N Teacher)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the teacher."
+        },
+        "assignedClass": {
+          "type": "string",
+          "description": "The class assigned to the teacher."
+        },
+        "assignedSubjects": {
+          "type": "array",
+          "description": "The subjects assigned to the teacher.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "loginCode": {
+          "type": "string",
+          "description": "The login code for the teacher."
+        }
+      },
+      "required": [
+        "id",
+        "schoolId",
+        "name",
+        "assignedClass",
+        "assignedSubjects",
+        "loginCode"
+      ]
+    },
+    "Result": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Result",
+      "type": "object",
+      "description": "Represents a student's result for a particular exam or assessment.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the result."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to Student. (Relationship: Student 1:N Result)"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Denormalized name of the student for display purposes."
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N Result)"
+        },
+        "examName": {
+          "type": "string",
+          "description": "The name of the exam (e.g., Mid-term, Final)."
+        },
+        "subjects": {
+          "type": "array",
+          "description": "An array of subjects and their corresponding marks.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the subject."
+              },
+              "mark": {
+                "type": "number",
+                "description": "The mark obtained in the subject."
+              }
+            },
+            "required": [
+              "name",
+              "mark"
+            ]
+          }
+        },
+        "gpa": {
+          "type": "number",
+          "description": "The GPA (Grade Point Average) calculated for the result."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Indicates whether the result is published or not. Students can only see published results."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the result was created."
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "schoolId",
+        "examName",
+        "subjects",
+        "gpa",
+        "published",
+        "createdAt"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment made by a student.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to Student. (Relationship: Student 1:N Payment)"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Denormalized name of the student for display purposes."
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N Payment)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount paid by the student."
+        },
+        "method": {
+          "type": "string",
+          "description": "The method of payment (e.g., credit card, online transfer)."
+        },
+        "trx": {
+          "type": "string",
+          "description": "The transaction ID for the payment."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the payment (pending / approved / rejected)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the payment was created.",
+          "format": "date-time"
+        },
+        "approvedAt": {
+          "type": "string",
+          "description": "The date when the payment was approved (if applicable).",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "studentName",
+        "schoolId",
+        "amount",
+        "method",
+        "trx",
+        "status",
+        "createdAt"
+      ]
+    },
+    "Notice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notice",
+      "type": "object",
+      "description": "Represents a notice published by the school.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the notice."
+        },
+        "schoolId": {
+          "type": "string",
+          "description": "Reference to School. (Relationship: School 1:N Notice)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the notice."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the notice."
+        },
+        "publishTo": {
+          "type": "string",
+          "description": "Specifies who the notice is published to (all / teacher / student / class)."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Indicates if the notice is published or not."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the notice was created."
+        }
+      },
+      "required": [
+        "id",
+        "schoolId",
+        "title",
+        "content",
+        "publishTo",
+        "published",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "schools/{schoolId}",
+        "definition": {
+          "entityName": "School",
+          "schema": {
+            "$ref": "#/backend/entities/School"
+          },
+          "description": "Stores school information.  `schoolId` is used throughout the database to scope data to individual schools. No denormalized authorization fields needed at the top level.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            }
+          ]
+        }
+      },
+      {
+        "path": "schools/{schoolId}/students/{studentId}",
+        "definition": {
+          "entityName": "Student",
+          "schema": {
+            "$ref": "#/backend/entities/Student"
+          },
+          "description": "Stores student information. Includes `schoolId` (denormalized) for authorization independence.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            },
+            {
+              "name": "studentId",
+              "description": "The unique identifier for the student."
+            }
+          ]
+        }
+      },
+      {
+        "path": "schools/{schoolId}/teachers/{teacherId}",
+        "definition": {
+          "entityName": "Teacher",
+          "schema": {
+            "$ref": "#/backend/entities/Teacher"
+          },
+          "description": "Stores teacher information. Includes `schoolId` (denormalized) for authorization independence.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            },
+            {
+              "name": "teacherId",
+              "description": "The unique identifier for the teacher."
+            }
+          ]
+        }
+      },
+      {
+        "path": "schools/{schoolId}/results/{resultId}",
+        "definition": {
+          "entityName": "Result",
+          "schema": {
+            "$ref": "#/backend/entities/Result"
+          },
+          "description": "Stores student results. Includes `schoolId` (denormalized) and `studentId` for authorization independence. The `published` field controls student visibility.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            },
+            {
+              "name": "resultId",
+              "description": "The unique identifier for the result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "schools/{schoolId}/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Stores payment information. Includes `schoolId` (denormalized) and `studentId` for authorization independence.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            },
+            {
+              "name": "paymentId",
+              "description": "The unique identifier for the payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "schools/{schoolId}/notices/{noticeId}",
+        "definition": {
+          "entityName": "Notice",
+          "schema": {
+            "$ref": "#/backend/entities/Notice"
+          },
+          "description": "Stores notices. Includes `schoolId` (denormalized) for authorization independence.",
+          "params": [
+            {
+              "name": "schoolId",
+              "description": "The unique identifier for the school."
+            },
+            {
+              "name": "noticeId",
+              "description": "The unique identifier for the notice."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed for a multi-tenant school management SaaS application (SchoolVerse), prioritizing security, scalability, and performance. The cornerstone of the security model is a combination of structural data segregation and Firebase Authentication Custom Claims. All data is partitioned by a top-level `schoolId`, ensuring strict multi-school isolation. Authorization within a school is managed through custom claims (`role`, `schoolId`, `subscriptionActive`) embedded in the user's auth token. This strategy eliminates the need for expensive `get()` calls within security rules, making them fast and scalable. The 'master' role has platform-wide administrative privileges. All data access is contingent on an active school subscription, a status checked via the `subscriptionActive` claim. This comprehensive approach ensures that data is secure, access is role-appropriate, and the system can scale efficiently without compromising on security."
+  }
+}
